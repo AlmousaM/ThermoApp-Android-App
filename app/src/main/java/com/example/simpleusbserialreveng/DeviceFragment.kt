@@ -27,6 +27,10 @@ class DeviceFragment: Fragment() {
     private var driver: UsbSerialDriver? = null
     private val baudRate = 9600
 
+    //getting instance of activeFragment from main activity
+    private var activeFragment = MainActivity().activeFragment
+
+
 
 
     override fun onCreateView(
@@ -57,11 +61,11 @@ class DeviceFragment: Fragment() {
                 args.putInt("baud", baudRate)
                 val fragment: Fragment = TerminalFragment()
                 fragment.arguments = args
-                fragmentManager!!.beginTransaction().replace(R.id.fragment, fragment, "terminal")
+                fragmentManager!!.beginTransaction().replace(R.id.fragmentContainer, fragment, "terminal")
                     .addToBackStack(null).commit()
+                activeFragment = fragment
             }
         }
-
     }
 
 
