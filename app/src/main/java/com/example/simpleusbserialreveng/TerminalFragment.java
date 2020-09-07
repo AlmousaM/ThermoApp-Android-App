@@ -57,11 +57,19 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
 
 
 
+
     private UsbSerialPort usbSerialPort;
     private SerialService service;
     private boolean initialStart = true;
     private Connected connected = Connected.False;
     private BroadcastReceiver broadcastReceiver;
+
+    interface OnTerminalDisconect {
+        public void RemoveTerminalFragment();
+
+    }
+
+    private OnTerminalDisconect onTerminalDisconect;
 
     public TerminalFragment() {
         broadcastReceiver = new BroadcastReceiver() {
@@ -134,6 +142,7 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     public void onAttach(@NonNull Activity activity) {
         super.onAttach(activity);
         getActivity().bindService(new Intent(getActivity(), SerialService.class), this, Context.BIND_AUTO_CREATE);
+        
     }
 
     @Override

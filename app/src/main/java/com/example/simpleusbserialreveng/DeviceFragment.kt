@@ -27,11 +27,18 @@ class DeviceFragment: Fragment() {
     private var driver: UsbSerialDriver? = null
     private val baudRate = 9600
 
-    //getting instance of activeFragment from main activity
-    //private var activeFragment = MainActivity().activeFragment
+    //interface to be implemented by MainActivity "parent activity"
+    interface onTerminalFragmentStarted {
+        fun addTerminalFragmentToMenu(fragment: Fragment)
+    }
 
+    //callback variable that get context of the main activity to call a function in the main activity
+    private var callback: onTerminalFragmentStarted? = null
 
-
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        callback = context as? onTerminalFragmentStarted
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -61,9 +68,10 @@ class DeviceFragment: Fragment() {
                 args.putInt("baud", baudRate)
                 val fragment: Fragment = TerminalFragment()
                 fragment.arguments = args
-                fragmentManager!!.beginTransaction().replace(R.id.fragmentContainer, fragment, "terminal")
-                    .addToBackStack(null).commit()
-                //activeFragment = fragment
+                //fragmentManager!!.beginTransaction().replace(R.id.fragmentContainer, fragment, "terminal")
+                   // .addToBackStack(null).commit()
+                //change activeFragment to terminal fragment in mainactivity
+                callback?.addTerminalFragmentToMenu(fragment)
             }
         }
     }
