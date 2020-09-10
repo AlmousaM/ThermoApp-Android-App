@@ -4,6 +4,7 @@
 
 <!-- allow the app to start a forground service to avoid killing the app when claiming memory, require API level 28     -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name = "android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application
         android:allowBackup="true"

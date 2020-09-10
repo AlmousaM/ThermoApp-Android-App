@@ -3,6 +3,7 @@ package com.example.simpleusbserialreveng
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
@@ -13,6 +14,9 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 
 
 class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedListener, DeviceFragment.onTerminalFragmentStarted, TerminalFragment.OnTerminalDisconect {
+
+    /* Ian added this */
+    private var settingsFragment: SettingsFragment = SettingsFragment();
 
     private val deviceFragment: DeviceFragment = DeviceFragment()
     private var terminalFragment: TerminalFragment = TerminalFragment()
@@ -41,6 +45,7 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
         fragmentTransaction.beginTransaction().apply {
             add(R.id.fragmentContainer, deviceFragment, "deviceFragment").hide(deviceFragment)
             add(R.id.fragmentContainer, pictureFragment, "pictureFragment").hide(pictureFragment)
+            add(R.id.fragmentContainer, settingsFragment, "settingsFragment").hide(settingsFragment)
         }.commit()
 
         ButtonNavigationListener()
@@ -78,6 +83,12 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
                     fragmentTransaction.beginTransaction().hide(activeFragment).show(pictureFragment).commit()
                     activeFragment = pictureFragment
                     Toast.makeText(this,"picture menu item selected", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.action_settings -> {
+                    fragmentTransaction.beginTransaction().hide(activeFragment).show(settingsFragment).commit()
+                    activeFragment = settingsFragment
+                    Toast.makeText(this, "opened settings", Toast.LENGTH_SHORT).show()
                     true
                 }
                 else -> false
