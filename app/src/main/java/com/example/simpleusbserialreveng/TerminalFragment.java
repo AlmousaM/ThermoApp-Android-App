@@ -20,13 +20,16 @@ import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.method.ScrollingMovementMethod;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -42,6 +45,8 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import java.io.IOException;
 import java.util.EnumSet;
 
+
+
 public class TerminalFragment extends Fragment implements ServiceConnection, SerialListener {
 
     private enum Connected { False, Pending, True }
@@ -49,11 +54,27 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     private int deviceId, portNum, baudRate;
     private String newline = "\r\n";
 
-    private TextView receiveText;
+    private TextView object_temp;
 
-    private ImageView servoUp;
-    private ImageView servoDown;
-    private int servoDegree = 0;
+    private TextView ambient_temp;
+
+    private Switch laser_switch;
+
+
+    private static final String TAG = "TERMINAL";
+
+    private String recievedText = "";
+
+    private boolean fullMessage = false;
+
+    //interface to be implemented by MainActivity "parent activity"
+    interface onTerminalDisconnected {
+        void showDeviceFragment();
+    }
+
+    //callback variable that get context of the main activity to call a function in the main activity
+    private  onTerminalDisconnected callback;
+
 
 
 
@@ -64,12 +85,6 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     private Connected connected = Connected.False;
     private BroadcastReceiver broadcastReceiver;
 
-    interface OnTerminalDisconect {
-        public void RemoveTerminalFragment();
-
-    }
-
-    private OnTerminalDisconect onTerminalDisconect;
 
     public TerminalFragment() {
         broadcastReceiver = new BroadcastReceiver() {
@@ -79,27 +94,15 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                     Boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
                     connect(granted);
                 }
+                //premission denied
+                else
+                {
+                    disconnect();
+                }
             }
         };
     }
 
-    private int degreeUp()
-    {
-        if(servoDegree < 180)
-        {
-            servoDegree +=10;
-        }
-        return servoDegree;
-    }
-
-    private int degreeDown()
-    {
-        if(servoDegree > 0)
-        {
-            servoDegree -=10;
-        }
-        return servoDegree;
-    }
 
     /*
      * Lifecycle
@@ -142,7 +145,9 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     public void onAttach(@NonNull Activity activity) {
         super.onAttach(activity);
         getActivity().bindService(new Intent(getActivity(), SerialService.class), this, Context.BIND_AUTO_CREATE);
-        
+        //get context of the parent activity
+        callback = (onTerminalDisconnected) activity;
+
     }
 
     @Override
@@ -188,12 +193,17 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_terminal, container, false);
-        receiveText = view.findViewById(R.id.recievedText);   // TextView performance decreases with number of spans
-        receiveText.setMovementMethod(ScrollingMovementMethod.getInstance());
-        servoUp = view.findViewById(R.id.servoUp);
-        servoDown = view.findViewById(R.id.servoDown);
-        servoUp.setOnClickListener(v -> send(Integer.toString(degreeUp())));
-        servoDown.setOnClickListener(v -> send(Integer.toString(degreeDown())));
+        object_temp = view.findViewById(R.id.object_temp);
+        ambient_temp = view.findViewById(R.id.ambient_temp);
+        laser_switch = view.findViewById(R.id.laser_switch);
+
+        //handle switch toggle even, and send ON/OFF to Arduino to toggle the laser diode
+        laser_switch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if(isChecked) send("ON");
+            else send("OFF");
+        });
+
+
         return view;
     }
 
@@ -213,15 +223,18 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                 device = v;
         if(device == null) {
             status("connection failed: device not found");
+            disconnect();
             return;
         }
         UsbSerialDriver driver = UsbSerialProber.getDefaultProber().probeDevice(device);
         if(driver == null) {
             status("connection failed: no driver for device");
+            disconnect();
             return;
         }
         if(driver.getPorts().size() < portNum) {
             status("connection failed: not enough ports at device");
+            disconnect();
             return;
         }
         usbSerialPort = driver.getPorts().get(portNum);
@@ -232,10 +245,14 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             return;
         }
         if(usbConnection == null) {
-            if (!usbManager.hasPermission(driver.getDevice()))
+            if (!usbManager.hasPermission(driver.getDevice())) {
                 status("connection failed: permission denied");
-            else
+                disconnect();
+            }
+            else {
                 status("connection failed: open failed");
+                disconnect();
+            }
             return;
         }
 
@@ -249,7 +266,9 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             // for consistency to bluetooth/bluetooth-LE app use same SerialListener and SerialService classes
             onSerialConnect();
         } catch (Exception e) {
+            disconnect();
             onSerialConnectError(e);
+
         }
     }
 
@@ -257,6 +276,8 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         connected = Connected.False;
         service.disconnect();
         usbSerialPort = null;
+        //if device is disconnected, show device fragment
+        callback.showDeviceFragment();
     }
 
     private void send(String str) {
@@ -265,8 +286,6 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             return;
         }
         try {
-            SpannableStringBuilder spn = new SpannableStringBuilder(str+'\n');
-            receiveText.append(spn);
             byte[] data = (str + newline).getBytes();
             service.write(data);
         } catch (Exception e) {
@@ -275,12 +294,55 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     }
 
     private void receive(byte[] data) {
-        receiveText.append(new String(data));
+        if(connected != Connected.True) {
+            Toast.makeText(getActivity(), "can't receive, not connected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        //get the data from serial port
+
+        Log.d(TAG, "raw bytes: " + new String(data));
+        for (byte b : data) {
+            if (b != 10) //newLine
+            {
+                recievedText += (new String(new byte[]{b}));
+            } else { //if new line is detected
+
+                fullMessage = true;
+
+            }
+        }
+        //String newText = new String(data);
+        //parse string into object temp
+        Log.d(TAG, "raw text: " + recievedText);
+
+        if (fullMessage) {
+
+            if (recievedText.contains("Obj:")) {
+                //split objet temp: from 33.5 "tempreture"
+                String[] tokens = recievedText.split("[,]");
+                if (tokens.length >= 4) {
+                    object_temp.setText(tokens[1]);
+                }
+            }
+
+            if (recievedText.contains("Amb:")) {
+                //split Ambient temp: from 33.5 "tempreture"
+                String[] tokens = recievedText.split("[,]");
+                if (tokens.length >= 4) {
+                    ambient_temp.setText(tokens[3]);
+                }
+            }
+
+            recievedText = ""; //empty recieve buffer after parsing
+            fullMessage = false;
+
+
+        }
     }
 
     void status(String str) {
         SpannableStringBuilder spn = new SpannableStringBuilder(str+'\n');
-        receiveText.append(spn);
+        //receiveText.append(spn);
     }
 
     /*

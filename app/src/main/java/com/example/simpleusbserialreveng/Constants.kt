@@ -11,5 +11,5 @@ internal object Constants {
         BuildConfig.APPLICATION_ID + ".MainActivity"
 
     // values have to be unique within each app
-    const val NOTIFY_MANAGER_START_FOREGROUND_SERVICE = 1002
+    const val NOTIFY_MANAGER_START_FOREGROUND_SERVICE = 6969
 }

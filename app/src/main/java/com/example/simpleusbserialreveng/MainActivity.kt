@@ -12,12 +12,12 @@ import androidx.fragment.app.FragmentManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 
-class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedListener, DeviceFragment.onTerminalFragmentStarted, TerminalFragment.OnTerminalDisconect {
+class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedListener, DeviceFragment.onTerminalFragmentStarted, TerminalFragment.onTerminalDisconnected {
 
-    private val deviceFragment: DeviceFragment = DeviceFragment()
+    private var deviceFragment: DeviceFragment = DeviceFragment()
     private var terminalFragment: TerminalFragment = TerminalFragment()
-    private val pictureFragment: PictuteFragment = PictuteFragment()
-    internal var activeFragment: Fragment = deviceFragment
+    private var pictureFragment: PictuteFragment = PictuteFragment()
+    private var activeFragment: Fragment = deviceFragment
     private lateinit var buttomNavView: BottomNavigationView
 
 
@@ -39,9 +39,13 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
 
 
         fragmentTransaction.beginTransaction().apply {
-            add(R.id.fragmentContainer, deviceFragment, "deviceFragment").hide(deviceFragment)
+            add(R.id.fragmentContainer, deviceFragment, "deviceFragment")
             add(R.id.fragmentContainer, pictureFragment, "pictureFragment").hide(pictureFragment)
         }.commit()
+
+        //default selected item
+        buttomNavView.selectedItemId = R.id.action_measure
+
 
         ButtonNavigationListener()
 
@@ -55,6 +59,7 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
         buttomNavView.setOnNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.action_measure -> {
+
                     if(fragmentTransaction.findFragmentByTag("terminal") as TerminalFragment?  == terminalFragment )
                     {
                         terminalFragment?.let {
@@ -102,10 +107,24 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
         Toast.makeText(this,"Mainactivity callback happened", Toast.LENGTH_SHORT).show()
     }
 
-    override fun RemoveTerminalFragment() {
+    override fun showDeviceFragment() {
+        //remove old terminal fragemnt
+        fragmentTransaction.beginTransaction().detach(terminalFragment).commit()
+        //remove old device fragemnt
+        fragmentTransaction.beginTransaction().detach(deviceFragment).commit()
 
-
-
+        //create a bundle to add unique args to differentiate between connected and unconnected terminal
+        val args = Bundle()
+        args.putInt("connected", 0)
+        //get new terminal fragment with connected status
+        terminalFragment = TerminalFragment()
+        terminalFragment.arguments = args
+        //get new device fragment
+        deviceFragment = DeviceFragment()
+        //show new device fragment
+        fragmentTransaction.beginTransaction().replace(R.id.fragmentContainer, deviceFragment).commit()
+        //set active fragment as device fragment
+        activeFragment = deviceFragment;
     }
 
 

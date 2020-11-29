@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">Thanos Serial Comm</string>
+    <string name="app_name">ThermoApp</string>
+    <string name="connected_message">ThermoSensor is Detected</string>
+    <string name="diconnected_message">ThermoSensor is not Detected</string>
 </resources>
