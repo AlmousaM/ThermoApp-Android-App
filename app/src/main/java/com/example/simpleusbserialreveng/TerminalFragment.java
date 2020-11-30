@@ -37,6 +37,8 @@ import android.widget.ToggleButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -50,6 +52,8 @@ import java.util.EnumSet;
 public class TerminalFragment extends Fragment implements ServiceConnection, SerialListener {
 
     private enum Connected { False, Pending, True }
+
+    private dataViewModel viewModel;
 
     private int deviceId, portNum, baudRate;
     private String newline = "\r\n";
@@ -190,6 +194,14 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     /*
      * UI
      */
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        //viewModel = new ViewModelProvider(requireActivity()).get(dataViewModel.class);
+
+    }
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_terminal, container, false);
@@ -197,12 +209,29 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         ambient_temp = view.findViewById(R.id.ambient_temp);
         laser_switch = view.findViewById(R.id.laser_switch);
 
+        viewModel = new ViewModelProvider(requireActivity()).get(dataViewModel.class);
+
         //handle switch toggle even, and send ON/OFF to Arduino to toggle the laser diode
         laser_switch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if(isChecked) send("ON");
             else send("OFF");
         });
 
+//        final Observer<String> emmissivObserver = new Observer<String>() {
+//
+//            @Override
+//            public void onChanged(String emmissiv) {
+//                //send the emmisivity to the temp sensor
+//                send(emmissiv);
+//            }
+//        };
+
+        //observe the emmisivity sent live data from the setting fragment
+        viewModel.getSetEmmissivLive().observe(getViewLifecycleOwner(),emmisivity ->
+                {
+                    send(emmisivity);
+                }
+                );
 
         return view;
     }
@@ -322,6 +351,10 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                 String[] tokens = recievedText.split("[,]");
                 if (tokens.length >= 4) {
                     object_temp.setText(tokens[1]);
+                    //save the object tempreture to the shared view model
+                    viewModel.setObjectTemp(tokens[1]);
+                    //live temp storing
+                    viewModel.setLiveObjTemp(tokens[1]);
                 }
             }
 
@@ -330,6 +363,14 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                 String[] tokens = recievedText.split("[,]");
                 if (tokens.length >= 4) {
                     ambient_temp.setText(tokens[3]);
+                }
+            }
+
+            if (recievedText.contains("EMS:")) {
+                //split  EMS: from (0.1~1) "tempreture"
+                String[] tokens = recievedText.split("[,]");
+                if (tokens.length >= 4) {
+                    viewModel.getSensorEmmissiv(tokens[5]);
                 }
             }
 

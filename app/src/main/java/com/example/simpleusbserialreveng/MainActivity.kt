@@ -16,7 +16,8 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
 
     private var deviceFragment: DeviceFragment = DeviceFragment()
     private var terminalFragment: TerminalFragment = TerminalFragment()
-    private var pictureFragment: PictuteFragment = PictuteFragment()
+    private var cameraFragment: CameraFragment = CameraFragment()
+    private var settingFragment: SettingFragment = SettingFragment()
     private var activeFragment: Fragment = deviceFragment
     private lateinit var buttomNavView: BottomNavigationView
 
@@ -40,7 +41,8 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
 
         fragmentTransaction.beginTransaction().apply {
             add(R.id.fragmentContainer, deviceFragment, "deviceFragment")
-            add(R.id.fragmentContainer, pictureFragment, "pictureFragment").hide(pictureFragment)
+            add(R.id.fragmentContainer, cameraFragment, "pictureFragment").hide(cameraFragment)
+            add(R.id.fragmentContainer, settingFragment, "settingFragment").hide(settingFragment)
         }.commit()
 
         //default selected item
@@ -79,11 +81,21 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
                     }
 
                 }
+
+
                 R.id.action_take_picture -> {
-                    fragmentTransaction.beginTransaction().hide(activeFragment).show(pictureFragment).commit()
-                    activeFragment = pictureFragment
+                    fragmentTransaction.beginTransaction().hide(activeFragment).show(cameraFragment).commit()
+                    activeFragment = cameraFragment
                     Toast.makeText(this,"picture menu item selected", Toast.LENGTH_SHORT).show()
                     true
+                }
+
+                R.id.action_settings -> {
+                    fragmentTransaction.beginTransaction().hide(activeFragment).show(settingFragment).commit()
+                    activeFragment = settingFragment
+                    Toast.makeText(this,"Setting menu item selected", Toast.LENGTH_SHORT).show()
+                    true
+
                 }
                 else -> false
             }
@@ -122,7 +134,7 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
         //get new device fragment
         deviceFragment = DeviceFragment()
         //show new device fragment
-        fragmentTransaction.beginTransaction().replace(R.id.fragmentContainer, deviceFragment).commit()
+        fragmentTransaction.beginTransaction().add(R.id.fragmentContainer, deviceFragment, "device").hide(activeFragment).commit()
         //set active fragment as device fragment
         activeFragment = deviceFragment;
     }

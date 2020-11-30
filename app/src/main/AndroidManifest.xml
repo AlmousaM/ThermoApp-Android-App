@@ -4,6 +4,10 @@
 
 <!-- allow the app to start a forground service to avoid killing the app when claiming memory, require API level 28     -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- adding cameraX premission  -->
+    <uses-feature android:name="android.hardware.camera.any" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
 
     <application
         android:allowBackup="true"
