@@ -92,7 +92,7 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/unit_text1"
+                android:id="@+id/Obj_unit_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -104,7 +104,7 @@
                 tools:text="C/F" />
 
             <TextView
-                android:id="@+id/unit_text2"
+                android:id="@+id/Amb_unit_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"

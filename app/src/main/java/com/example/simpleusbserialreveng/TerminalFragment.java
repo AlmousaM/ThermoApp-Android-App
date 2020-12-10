@@ -45,6 +45,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.EnumSet;
 
 
@@ -62,6 +63,9 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
 
     private TextView ambient_temp;
 
+    private TextView ambient_temp_unit;
+    private TextView object_temp_unit;
+
     private Switch laser_switch;
 
 
@@ -70,6 +74,9 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     private String recievedText = "";
 
     private boolean fullMessage = false;
+
+    //tempreture unit, default set to C
+    private String tempUnit = "C";
 
     //interface to be implemented by MainActivity "parent activity"
     interface onTerminalDisconnected {
@@ -88,6 +95,29 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     private boolean initialStart = true;
     private Connected connected = Connected.False;
     private BroadcastReceiver broadcastReceiver;
+
+
+    //function to convert the temperature received Kelvin from the sensor to C or F depends on the settings
+    private String ConvertTempToCF(String TempK)
+    {
+        //convert the string to double
+        double temp = Double.parseDouble(TempK);
+
+        if(tempUnit == "C")
+        {
+             temp = temp - 273.15;
+        }
+
+        else if(tempUnit == "F")
+        {
+            temp = (temp - 273.15) * (9/5) + 32;
+        }
+
+        //convert temp back to string with 2 decemal places
+        DecimalFormat formatter = new DecimalFormat("#0.00");
+        return formatter.format(temp);
+
+    }
 
 
     public TerminalFragment() {
@@ -198,7 +228,7 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        //viewModel = new ViewModelProvider(requireActivity()).get(dataViewModel.class);
+
 
     }
 
@@ -208,6 +238,9 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         object_temp = view.findViewById(R.id.object_temp);
         ambient_temp = view.findViewById(R.id.ambient_temp);
         laser_switch = view.findViewById(R.id.laser_switch);
+        object_temp_unit = view.findViewById(R.id.Obj_unit_text);
+        ambient_temp_unit = view.findViewById(R.id.Amb_unit_text);
+
 
         viewModel = new ViewModelProvider(requireActivity()).get(dataViewModel.class);
 
@@ -232,6 +265,16 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                     send(emmisivity);
                 }
                 );
+
+        //observe the tempreture unit set from the setting fragment
+        viewModel.getSetTempCF().observe(getViewLifecycleOwner(),unitCF -> {
+
+            tempUnit = unitCF;
+            object_temp_unit.setText(unitCF);
+            ambient_temp_unit.setText(unitCF);
+
+
+        });
 
         return view;
     }
@@ -350,11 +393,16 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                 //split objet temp: from 33.5 "tempreture"
                 String[] tokens = recievedText.split("[,]");
                 if (tokens.length >= 4) {
-                    object_temp.setText(tokens[1]);
+                    //convert temp from K to C / F
+                    String temp = ConvertTempToCF(tokens[1]);
+                    object_temp.setText(temp);
                     //save the object tempreture to the shared view model
-                    viewModel.setObjectTemp(tokens[1]);
+                    //used to save the current tempereture into the picture file name
+                    viewModel.setObjectTemp(temp+tempUnit);
+
                     //live temp storing
-                    viewModel.setLiveObjTemp(tokens[1]);
+                    //used to view the live tempreture on capture image button
+                    viewModel.setLiveObjTemp(temp+tempUnit);
                 }
             }
 
@@ -362,14 +410,16 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                 //split Ambient temp: from 33.5 "tempreture"
                 String[] tokens = recievedText.split("[,]");
                 if (tokens.length >= 4) {
-                    ambient_temp.setText(tokens[3]);
+                    //convert temp from K to C / F
+                    String temp = ConvertTempToCF(tokens[3]);
+                    ambient_temp.setText(temp);
                 }
             }
 
             if (recievedText.contains("EMS:")) {
                 //split  EMS: from (0.1~1) "tempreture"
                 String[] tokens = recievedText.split("[,]");
-                if (tokens.length >= 4) {
+                if (tokens.length >= 6) {
                     viewModel.getSensorEmmissiv(tokens[5]);
                 }
             }

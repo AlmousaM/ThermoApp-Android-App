@@ -16,6 +16,15 @@ class dataViewModel: ViewModel() {
     //data read from the temp sensor
     val readEmmissivLive = MutableLiveData<String>()
 
+    //setting of tempreture C/F
+    val setTempCF = MutableLiveData<String>()
+
+    //function to set the setTemp live data variable
+    fun setLiveTempCF(tempCF: String) {
+        setTempCF.value = tempCF
+    }
+
+    //tempreture read from the sensor are stored into live data object
     fun setLiveObjTemp(temp: String) {
         liveObjTemp.value = temp
     }
@@ -35,6 +44,8 @@ class dataViewModel: ViewModel() {
         liveObjTemp.value = " "
         setEmmissivLive.value = " "
         readEmmissivLive.value = " "
+        //default tempreture in C
+        setTempCF.value = "C"
 
     }
 

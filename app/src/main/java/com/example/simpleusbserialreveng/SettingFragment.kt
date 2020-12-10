@@ -6,6 +6,7 @@ import android.text.Editable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.RadioButton
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -32,6 +33,26 @@ class SettingFragment: Fragment() {
 
         saveEmmis.setOnClickListener { SaveEmmissivity() }
 
+        //click listener for the C/F radio buttons
+        radioGroup.setOnCheckedChangeListener { group, checkedId ->
+
+            if (checkedId == R.id.CRadioButton)
+            {
+                //set tempreture unit to C
+                viewModel.setLiveTempCF("C")
+            }
+
+            if (checkedId == R.id.FRadioButton)
+            {
+                //set tempreture unit to F
+                viewModel.setLiveTempCF("F")
+
+            }
+
+        }
+
+
+
 
 
     }
@@ -40,6 +61,8 @@ class SettingFragment: Fragment() {
         super.onAttach(context)
         safeContext = context
     }
+
+
 
 
 
