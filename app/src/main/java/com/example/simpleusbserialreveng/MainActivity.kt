@@ -3,6 +3,7 @@ package com.example.simpleusbserialreveng
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
@@ -18,6 +19,7 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
     private var terminalFragment: TerminalFragment = TerminalFragment()
     private var cameraFragment: CameraFragment = CameraFragment()
     private var settingFragment: SettingFragment = SettingFragment()
+    private var hitoryListFragment: HistoryListFragment = HistoryListFragment.newInstance()
     private var activeFragment: Fragment = deviceFragment
     private lateinit var buttomNavView: BottomNavigationView
 
@@ -43,6 +45,7 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
             add(R.id.fragmentContainer, deviceFragment, "deviceFragment")
             add(R.id.fragmentContainer, cameraFragment, "pictureFragment").hide(cameraFragment)
             add(R.id.fragmentContainer, settingFragment, "settingFragment").hide(settingFragment)
+            add(R.id.fragmentContainer, hitoryListFragment, "HistoryListFragment").hide(hitoryListFragment)
         }.commit()
 
         //default selected item
@@ -50,6 +53,8 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
 
 
         ButtonNavigationListener()
+
+        Log.d("TAG", "testing")
 
     }
 
@@ -96,6 +101,12 @@ class MainActivity : AppCompatActivity(), FragmentManager.OnBackStackChangedList
                     Toast.makeText(this,"Setting menu item selected", Toast.LENGTH_SHORT).show()
                     true
 
+                }
+
+                R.id.action_history -> {
+                    fragmentTransaction.beginTransaction().hide(activeFragment).show(hitoryListFragment).commit()
+                    activeFragment = hitoryListFragment
+                    true
                 }
                 else -> false
             }

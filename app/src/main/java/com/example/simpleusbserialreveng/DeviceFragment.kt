@@ -45,7 +45,7 @@ class DeviceFragment: Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_device, container,false)
-        refreshButton = view!!.findViewById(R.id.refreshButton)
+        refreshButton = view.findViewById(R.id.refreshButton)
         connectButton = view.findViewById(R.id.connectButton)
         connectMessage = view.findViewById(R.id.connect_text)
         return view
@@ -78,7 +78,7 @@ class DeviceFragment: Fragment() {
 
 
     private fun refresh() {
-        val usbManager = activity!!.getSystemService(Context.USB_SERVICE) as UsbManager
+        val usbManager = requireActivity().getSystemService(Context.USB_SERVICE) as UsbManager
         val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager)
         if (availableDrivers.isEmpty()) {
 //            deviceName.text = "Not device found"
