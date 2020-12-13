@@ -40,7 +40,11 @@ class CameraFragment: Fragment() {
     private var imageAnalyzer: ImageAnalysis? = null
     private var camera: Camera? = null
     private val viewModel: dataViewModel by activityViewModels()
+
+    private val tempListViewModel: TempListViewModel by activityViewModels()
+
     private var objTemp: String = ""
+
 
 
 
@@ -74,6 +78,8 @@ class CameraFragment: Fragment() {
         } else {
             ActivityCompat.requestPermissions(requireActivity(), REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
+
+
 
 
         // Setup the listener for take photo button
@@ -147,8 +153,13 @@ class CameraFragment: Fragment() {
                 val msg = "Photo capture succeeded: $savedUri"
                 Toast.makeText(safeContext, msg, Toast.LENGTH_SHORT).show()
                 Log.d(TAG, msg)
+                //update the the list in temp history fragment
+                tempListViewModel.getTempReadings(getOutputDirectory())
             }
         })
+
+
+
     }
 
     override fun onPause() {

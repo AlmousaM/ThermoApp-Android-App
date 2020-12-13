@@ -1,17 +1,28 @@
 package com.example.simpleusbserialreveng
 
+
+import android.app.AlertDialog
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
-import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.io.File
+
 
 private const val TAG = "HistoryListFragment"
 
@@ -19,12 +30,52 @@ class HistoryListFragment: Fragment()
 {
 
     private lateinit var historyRecyclerView: RecyclerView
+
+    //initially the list is empty until we get the data from the viewmodel live data
     private var adapter: TempAdapter? = TempAdapter(emptyList())
+
+
+
+    private lateinit var safeContext: Context
+
 
 
 
     //get instance of the TempList ViewModel
     private val tempListViewModel: TempListViewModel by activityViewModels()
+
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        safeContext = context
+    }
+
+
+    //function to get images from the data folder
+    fun getSavedTempReadings() : MutableList<TempHistoryData>
+    {
+        //create a mutable list of the for temp data objects
+        val readings = mutableListOf<TempHistoryData>()
+
+        //get the location of the image folders
+        val folder: File = getOutputDirectory()
+
+        //get list of files in the folder
+        val files = folder.listFiles()
+
+        //loop thru the files to get the name and the image URI
+        for (i in files.indices)
+        {
+            val imageFile = files[i]
+            var tempDataObject = TempHistoryData()
+            tempDataObject.title = imageFile.name
+            tempDataObject.photoPath = imageFile.path
+            readings += tempDataObject
+        }
+
+        return readings
+
+    }
 
 
 
@@ -39,10 +90,12 @@ class HistoryListFragment: Fragment()
         historyRecyclerView = view.findViewById(R.id.history_recycler_view) as RecyclerView
         //give the recycler view a layout manager, otherwise it will crash
         historyRecyclerView.layoutManager = LinearLayoutManager(context)
+
         historyRecyclerView.adapter = adapter
 
+        //call viewmodel function to populate the live data list TempReadingsLiveData
+        tempListViewModel.getTempReadings(getOutputDirectory())
 
-        UpdateUI()
 
         return view
 
@@ -53,12 +106,21 @@ class HistoryListFragment: Fragment()
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
+        //observe the when the live data get the images
+        tempListViewModel.TempReadingsLiveData.observe(viewLifecycleOwner, Observer { tempItemList -> tempItemList?.let {
+            Log.i(TAG, "Got temp List of size ${tempItemList.size}")
+            UpdateUI(tempItemList)
+
+        } })
+
+
     }
 
     //method to update the UI with the items in the list
-    private fun UpdateUI()
+    private fun UpdateUI(tempList: List<TempHistoryData>)
     {
-        val tempList = tempListViewModel.tempReadings
+        adapter = TempAdapter(emptyList())
         adapter = TempAdapter(tempList)
         historyRecyclerView.adapter = adapter
     }
@@ -73,6 +135,7 @@ class HistoryListFragment: Fragment()
         val titleTextView: TextView = itemView.findViewById(R.id.temp_title)
         val tempValueTextView: TextView = itemView.findViewById(R.id.temp_degree)
         val tempDateTextView: TextView = itemView.findViewById(R.id.temp_date)
+        val tempImage: ImageView = itemView.findViewById(R.id.tempImageView)
 
         //add on click listener to every ViewHolder
         init {
@@ -82,15 +145,17 @@ class HistoryListFragment: Fragment()
         fun Bind(tempItem: TempHistoryData)
         {
             this.tempItem = tempItem
-            titleTextView.text = this.tempItem.title
-            tempValueTextView.text = this.tempItem.tempreture
-            tempDateTextView.text = this.tempItem.date.toString()
-
+            titleTextView.append(this.tempItem.title)
+            tempValueTextView.append(this.tempItem.tempreture)
+            tempDateTextView.append(this.tempItem.date)
+            val bitmap = GetScaledBitMap(tempItem.photoPath, requireActivity())
+            tempImage.setImageBitmap(bitmap)
         }
 
         //handle what happens when an item in the list is pressed
         override fun onClick(v: View?) {
             Toast.makeText(context, "${tempItem.title} pressed!", Toast.LENGTH_SHORT).show()
+            ShowImageDialog(tempItem.photoPath)
         }
 
     }
@@ -121,6 +186,40 @@ class HistoryListFragment: Fragment()
 
 
     }
+
+
+    fun getOutputDirectory(): File {
+        val mediaDir = activity?.externalMediaDirs?.firstOrNull()?.let {
+            File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
+        }
+        return if (mediaDir != null && mediaDir.exists()) mediaDir else activity?.filesDir!!
+    }
+
+
+    private fun ShowImageDialog(imagePath: String)
+    {
+        val builder = AlertDialog.Builder(safeContext)
+        builder.setPositiveButton(
+            "Close"
+        ) { dialog, which -> }
+        val dialog = builder.create()
+        val inflater = layoutInflater
+        val dialogLayout: View = inflater.inflate(R.layout.image_viewer, null)
+        dialog.setView(dialogLayout)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+
+        dialog.show()
+
+        val bitmap = GetScaledBitMap(imagePath, requireActivity())
+
+        val image = dialog.findViewById<ImageView>(R.id.imageEnlarged)
+        image.setImageBitmap(bitmap)
+
+    }
+
+
+
 
 
 

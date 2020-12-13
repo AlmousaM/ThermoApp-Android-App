@@ -8,14 +8,14 @@ import androidx.fragment.app.Fragment
 
 class HistoryFragment: Fragment() {
 
-    private lateinit var temp: TempHistoryData
+    //private lateinit var temp: TempHistoryData
 
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        temp = TempHistoryData()
+        //temp = TempHistoryData()
     }
 
 

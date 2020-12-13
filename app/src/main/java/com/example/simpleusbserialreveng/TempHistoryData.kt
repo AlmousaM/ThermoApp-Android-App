@@ -1,5 +1,6 @@
 package com.example.simpleusbserialreveng
 
+import android.net.Uri
 import java.util.*
 
 
@@ -8,5 +9,7 @@ data class TempHistoryData(val id: UUID = UUID.randomUUID(),
                            var tempreture: String = "",
                            var unit: String = "",
                            var title: String = "",
-                           var date: Date = Date() )
+                           var date: String = "",
+                           //image path
+                           var photoPath: String = "" )
 

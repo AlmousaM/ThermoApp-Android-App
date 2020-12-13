@@ -100,8 +100,17 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     //function to convert the temperature received Kelvin from the sensor to C or F depends on the settings
     private String ConvertTempToCF(String TempK)
     {
-        //convert the string to double
-        double temp = Double.parseDouble(TempK);
+        double temp = 0;
+        //convert the string to double if valid
+        try {
+             temp = Double.parseDouble(TempK);
+        }
+
+        //if the number can't be converted, return empty string
+        catch (NumberFormatException e) {
+            return "";
+
+    }
 
         if(tempUnit == "C")
         {
@@ -110,7 +119,7 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
 
         else if(tempUnit == "F")
         {
-            temp = (temp - 273.15) * (9/5) + 32;
+            temp = (temp - 273.15) * (9.0/5.0) + 32.0;
         }
 
         //convert temp back to string with 2 decemal places
@@ -398,11 +407,11 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                     object_temp.setText(temp);
                     //save the object tempreture to the shared view model
                     //used to save the current tempereture into the picture file name
-                    viewModel.setObjectTemp(temp+tempUnit);
+                    viewModel.setObjectTemp(temp+ " " + tempUnit);
 
                     //live temp storing
                     //used to view the live tempreture on capture image button
-                    viewModel.setLiveObjTemp(temp+tempUnit);
+                    viewModel.setLiveObjTemp(temp+ " " + tempUnit);
                 }
             }
 

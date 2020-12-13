@@ -9,9 +9,10 @@
 
 
     <ImageView
-        android:id="@+id/imageView2"
+        android:id="@+id/tempImageView"
         android:layout_width="80dp"
         android:layout_height="80dp"
+        android:rotation="90"
         app:srcCompat="@drawable/thanos_gunlet"
         tools:srcCompat="@drawable/thanos_gunlet" />
 
@@ -25,19 +26,22 @@
             android:id="@+id/temp_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="TextView" />
+            android:text="Image #"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/temp_degree"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="TextView" />
+            android:text="Tempreture: "
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/temp_date"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="TextView" />
+            android:text="Date: "
+            android:textStyle="bold" />
     </LinearLayout>
 
 </LinearLayout>
