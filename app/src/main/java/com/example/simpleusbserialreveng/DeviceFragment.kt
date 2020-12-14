@@ -18,16 +18,26 @@ import com.hoho.android.usbserial.driver.UsbSerialProber
 class DeviceFragment: Fragment() {
     private lateinit var refreshButton: Button
     private lateinit var connectButton: Button
-    private lateinit var deviceName: TextView
-    private lateinit var productId: TextView
-    private lateinit var vendorId: TextView
+    private lateinit var connectMessage: TextView
+
 
     private var device: UsbDevice? = null
     private var port: UsbSerialPort? = null
     private var driver: UsbSerialDriver? = null
     private val baudRate = 9600
 
+    //interface to be implemented by MainActivity "parent activity"
+    interface onTerminalFragmentStarted {
+        fun addTerminalFragmentToMenu(fragment: Fragment)
+    }
 
+    //callback variable that get context of the main activity to call a function in the main activity
+    private var callback: onTerminalFragmentStarted? = null
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        callback = context as? onTerminalFragmentStarted
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -35,18 +45,19 @@ class DeviceFragment: Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_device, container,false)
-        refreshButton = view!!.findViewById(R.id.refreshButton)
+        refreshButton = view.findViewById(R.id.refreshButton)
         connectButton = view.findViewById(R.id.connectButton)
-        deviceName = view.findViewById(R.id.deviceName)
-        productId = view.findViewById(R.id.productId)
-        vendorId = view.findViewById(R.id.vendorID)
+        connectMessage = view.findViewById(R.id.connect_text)
         return view
     }
 
     override fun onStart() {
         super.onStart()
         refreshButton.setOnClickListener { refresh()
-            if (driver != null) connectButton.isEnabled = true
+            if (driver != null) {
+                connectButton.isEnabled = true
+                connectMessage.text = getString(R.string.connected_message)
+            }
         }
         connectButton.setOnClickListener {
             if (driver != null)
@@ -57,24 +68,25 @@ class DeviceFragment: Fragment() {
                 args.putInt("baud", baudRate)
                 val fragment: Fragment = TerminalFragment()
                 fragment.arguments = args
-                fragmentManager!!.beginTransaction().replace(R.id.fragment, fragment, "terminal")
-                    .addToBackStack(null).commit()
+                //fragmentManager!!.beginTransaction().replace(R.id.fragmentContainer, fragment, "terminal")
+                   // .addToBackStack(null).commit()
+                //change activeFragment to terminal fragment in mainactivity
+                callback?.addTerminalFragmentToMenu(fragment)
             }
         }
-
     }
 
 
     private fun refresh() {
-        val usbManager = activity!!.getSystemService(Context.USB_SERVICE) as UsbManager
+        val usbManager = requireActivity().getSystemService(Context.USB_SERVICE) as UsbManager
         val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager)
         if (availableDrivers.isEmpty()) {
-            deviceName.text = "Not device found"
-            productId.text = "NA"
-            vendorId.text = "NA"
+//            deviceName.text = "Not device found"
+//            productId.text = "NA"
+//            vendorId.text = "NA"
             device = null
             port= null
-            driver = null
+            connectMessage.text = getString(R.string.diconnected_message)
             return;
         }
 
@@ -82,8 +94,8 @@ class DeviceFragment: Fragment() {
         driver = availableDrivers[0]
         //get the first port
         port = driver!!.ports[0]
-        deviceName.text = driver!!.javaClass.simpleName
-        productId.text = driver!!.device.deviceId.toString()
-        vendorId.text = driver!!.device.vendorId.toString()
+//        deviceName.text = driver!!.javaClass.simpleName
+//        productId.text = driver!!.device.deviceId.toString()
+//        vendorId.text = driver!!.device.vendorId.toString()
     }
 }

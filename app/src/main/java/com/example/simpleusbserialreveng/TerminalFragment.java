@@ -20,13 +20,16 @@ import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.method.ScrollingMovementMethod;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -34,26 +37,56 @@ import android.widget.ToggleButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.EnumSet;
+
+
 
 public class TerminalFragment extends Fragment implements ServiceConnection, SerialListener {
 
     private enum Connected { False, Pending, True }
 
+    private dataViewModel viewModel;
+
     private int deviceId, portNum, baudRate;
     private String newline = "\r\n";
 
-    private TextView receiveText;
+    private TextView object_temp;
 
-    private ImageView servoUp;
-    private ImageView servoDown;
-    private int servoDegree = 0;
+    private TextView ambient_temp;
+
+    private TextView ambient_temp_unit;
+    private TextView object_temp_unit;
+
+    private Switch laser_switch;
+
+
+    private static final String TAG = "TERMINAL";
+
+    private String recievedText = "";
+
+    private boolean fullMessage = false;
+
+    //tempreture unit, default set to C
+    private String tempUnit = "C";
+
+    //interface to be implemented by MainActivity "parent activity"
+    interface onTerminalDisconnected {
+        void showDeviceFragment();
+    }
+
+    //callback variable that get context of the main activity to call a function in the main activity
+    private  onTerminalDisconnected callback;
+
+
 
 
 
@@ -63,6 +96,39 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     private Connected connected = Connected.False;
     private BroadcastReceiver broadcastReceiver;
 
+
+    //function to convert the temperature received Kelvin from the sensor to C or F depends on the settings
+    private String ConvertTempToCF(String TempK)
+    {
+        double temp = 0;
+        //convert the string to double if valid
+        try {
+             temp = Double.parseDouble(TempK);
+        }
+
+        //if the number can't be converted, return empty string
+        catch (NumberFormatException e) {
+            return "";
+
+    }
+
+        if(tempUnit == "C")
+        {
+             temp = temp - 273.15;
+        }
+
+        else if(tempUnit == "F")
+        {
+            temp = (temp - 273.15) * (9.0/5.0) + 32.0;
+        }
+
+        //convert temp back to string with 2 decemal places
+        DecimalFormat formatter = new DecimalFormat("#0.00");
+        return formatter.format(temp);
+
+    }
+
+
     public TerminalFragment() {
         broadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -71,27 +137,15 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                     Boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
                     connect(granted);
                 }
+                //premission denied
+                else
+                {
+                    disconnect();
+                }
             }
         };
     }
 
-    private int degreeUp()
-    {
-        if(servoDegree < 180)
-        {
-            servoDegree +=10;
-        }
-        return servoDegree;
-    }
-
-    private int degreeDown()
-    {
-        if(servoDegree > 0)
-        {
-            servoDegree -=10;
-        }
-        return servoDegree;
-    }
 
     /*
      * Lifecycle
@@ -134,6 +188,9 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     public void onAttach(@NonNull Activity activity) {
         super.onAttach(activity);
         getActivity().bindService(new Intent(getActivity(), SerialService.class), this, Context.BIND_AUTO_CREATE);
+        //get context of the parent activity
+        callback = (onTerminalDisconnected) activity;
+
     }
 
     @Override
@@ -176,15 +233,58 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     /*
      * UI
      */
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+
+    }
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_terminal, container, false);
-        receiveText = view.findViewById(R.id.recievedText);   // TextView performance decreases with number of spans
-        receiveText.setMovementMethod(ScrollingMovementMethod.getInstance());
-        servoUp = view.findViewById(R.id.servoUp);
-        servoDown = view.findViewById(R.id.servoDown);
-        servoUp.setOnClickListener(v -> send(Integer.toString(degreeUp())));
-        servoDown.setOnClickListener(v -> send(Integer.toString(degreeDown())));
+        object_temp = view.findViewById(R.id.object_temp);
+        ambient_temp = view.findViewById(R.id.ambient_temp);
+        laser_switch = view.findViewById(R.id.laser_switch);
+        object_temp_unit = view.findViewById(R.id.Obj_unit_text);
+        ambient_temp_unit = view.findViewById(R.id.Amb_unit_text);
+
+
+        viewModel = new ViewModelProvider(requireActivity()).get(dataViewModel.class);
+
+        //handle switch toggle even, and send ON/OFF to Arduino to toggle the laser diode
+        laser_switch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if(isChecked) send("ON");
+            else send("OFF");
+        });
+
+//        final Observer<String> emmissivObserver = new Observer<String>() {
+//
+//            @Override
+//            public void onChanged(String emmissiv) {
+//                //send the emmisivity to the temp sensor
+//                send(emmissiv);
+//            }
+//        };
+
+        //observe the emmisivity sent live data from the setting fragment
+        viewModel.getSetEmmissivLive().observe(getViewLifecycleOwner(),emmisivity ->
+                {
+                    send(emmisivity);
+                }
+                );
+
+        //observe the tempreture unit set from the setting fragment
+        viewModel.getSetTempCF().observe(getViewLifecycleOwner(),unitCF -> {
+
+            tempUnit = unitCF;
+            object_temp_unit.setText(unitCF);
+            ambient_temp_unit.setText(unitCF);
+
+
+        });
+
         return view;
     }
 
@@ -204,15 +304,18 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                 device = v;
         if(device == null) {
             status("connection failed: device not found");
+            disconnect();
             return;
         }
         UsbSerialDriver driver = UsbSerialProber.getDefaultProber().probeDevice(device);
         if(driver == null) {
             status("connection failed: no driver for device");
+            disconnect();
             return;
         }
         if(driver.getPorts().size() < portNum) {
             status("connection failed: not enough ports at device");
+            disconnect();
             return;
         }
         usbSerialPort = driver.getPorts().get(portNum);
@@ -223,10 +326,14 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             return;
         }
         if(usbConnection == null) {
-            if (!usbManager.hasPermission(driver.getDevice()))
+            if (!usbManager.hasPermission(driver.getDevice())) {
                 status("connection failed: permission denied");
-            else
+                disconnect();
+            }
+            else {
                 status("connection failed: open failed");
+                disconnect();
+            }
             return;
         }
 
@@ -240,7 +347,9 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             // for consistency to bluetooth/bluetooth-LE app use same SerialListener and SerialService classes
             onSerialConnect();
         } catch (Exception e) {
+            disconnect();
             onSerialConnectError(e);
+
         }
     }
 
@@ -248,6 +357,8 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         connected = Connected.False;
         service.disconnect();
         usbSerialPort = null;
+        //if device is disconnected, show device fragment
+        callback.showDeviceFragment();
     }
 
     private void send(String str) {
@@ -256,8 +367,6 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             return;
         }
         try {
-            SpannableStringBuilder spn = new SpannableStringBuilder(str+'\n');
-            receiveText.append(spn);
             byte[] data = (str + newline).getBytes();
             service.write(data);
         } catch (Exception e) {
@@ -266,12 +375,74 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     }
 
     private void receive(byte[] data) {
-        receiveText.append(new String(data));
+        if(connected != Connected.True) {
+            Toast.makeText(getActivity(), "can't receive, not connected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        //get the data from serial port
+
+        Log.d(TAG, "raw bytes: " + new String(data));
+        for (byte b : data) {
+            if (b != 10) //newLine
+            {
+                recievedText += (new String(new byte[]{b}));
+            } else { //if new line is detected
+
+                fullMessage = true;
+
+            }
+        }
+        //String newText = new String(data);
+        //parse string into object temp
+        Log.d(TAG, "raw text: " + recievedText);
+
+        if (fullMessage) {
+
+            if (recievedText.contains("Obj:")) {
+                //split objet temp: from 33.5 "tempreture"
+                String[] tokens = recievedText.split("[,]");
+                if (tokens.length >= 4) {
+                    //convert temp from K to C / F
+                    String temp = ConvertTempToCF(tokens[1]);
+                    object_temp.setText(temp);
+                    //save the object tempreture to the shared view model
+                    //used to save the current tempereture into the picture file name
+                    viewModel.setObjectTemp(temp+ " " + tempUnit);
+
+                    //live temp storing
+                    //used to view the live tempreture on capture image button
+                    viewModel.setLiveObjTemp(temp+ " " + tempUnit);
+                }
+            }
+
+            if (recievedText.contains("Amb:")) {
+                //split Ambient temp: from 33.5 "tempreture"
+                String[] tokens = recievedText.split("[,]");
+                if (tokens.length >= 4) {
+                    //convert temp from K to C / F
+                    String temp = ConvertTempToCF(tokens[3]);
+                    ambient_temp.setText(temp);
+                }
+            }
+
+            if (recievedText.contains("EMS:")) {
+                //split  EMS: from (0.1~1) "tempreture"
+                String[] tokens = recievedText.split("[,]");
+                if (tokens.length >= 6) {
+                    viewModel.getSensorEmmissiv(tokens[5]);
+                }
+            }
+
+            recievedText = ""; //empty recieve buffer after parsing
+            fullMessage = false;
+
+
+        }
     }
 
     void status(String str) {
         SpannableStringBuilder spn = new SpannableStringBuilder(str+'\n');
-        receiveText.append(spn);
+        //receiveText.append(spn);
     }
 
     /*
